@@ -8,51 +8,34 @@ import (
 	"time"
 	"os"
 	"log"
-	"errors"
+	"io/ioutil"	
 	"math/rand"
 	"strconv"
+	"encoding/json"
 )
 
+
+
 /*
-	@function: ScanConfigForServer
-	@description: Scans the config file for all of the ports that will be used to open concurrent TCP Servers
+	@function: readJSON
+	@description: Reads the JSON and returns a struct which contains 
+		the type, port, username and IP
 	@exported: True
 	@params: N/A
-	@returns: []string
+	@returns: Connections
 */
-func ScanConfigForServer(source string) (string, error) {
-	config, err := os.Open("config.txt")
+func ReadJSON() Connections {
+	jsonFile, err := os.Open("connections.json")
+	var connections Connections
 	if err != nil {
 		fmt.Println(err)
+		return connections
 	}
-
-	scanner := bufio.NewScanner(config)
-	scanner.Split(bufio.ScanLines)
-	counter := 0
-	for {
-		success := scanner.Scan()
-		if success == false {
-			err = scanner.Err()
-			if err == nil {
-				break
-			} else {
-				log.Fatal(err)
-				break
-			}
-		}
-		// don't check the first line
-		if (counter != 0) {
-			configArray := strings.Fields(scanner.Text())
-			port := configArray[2]
-			if (configArray[0] == source) {
-				return port, nil
-			}
-		}
-		counter++
-	}
-	return "", errors.New("Cannot find port")
+	defer jsonFile.Close()
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	json.Unmarshal(byteValue, &connections)
+	return connections
 }
-
 
 /*
 	@function: CreateUserInputStruct
@@ -61,11 +44,10 @@ func ScanConfigForServer(source string) (string, error) {
 	@params: string, string, string
 	@returns: {UserInput}
 */
-func CreateUserInputStruct(destination, message, source string) UserInput {
+func CreateUserInputStruct(username, message string) UserInput {
 	var input UserInput
-	input.Destination = destination
+	input.UserName = username
 	input.Message = message
-	input.Source = source
 	return input
 }
 

@@ -6,8 +6,7 @@ import (
 	"os"
 	"sync"
 	"strings"
-	"github.com/akamensky/argparse"
-	"strconv"
+
 )
 
 /*
@@ -40,6 +39,8 @@ func parseInput(source *string) (unicast.UserInput, unicast.Connection) {
 	return inputStruct, connection
 }
 
+
+// TODO: Scan for json here
 /*
 	@function: openTCPServerConnections
 	@description: Opens all of the ports defined in the config file using ScanConfigForServer() to get an array of ports 
@@ -64,28 +65,23 @@ func openTCPServerConnections(source *string) {
 	@params: {UserInput}, {Connection}, {WaitGroup}
 	@returns: N/A
 */
-func unicastSend(inputStruct unicast.UserInput, connection unicast.Connection, wg *sync.WaitGroup) {
-	defer wg.Done()
+func unicastSend(inputStruct unicast.UserInput, connection unicast.Connection) {
 	// Send the message using UserInput struct and Connection struct to easily pass around data
 	unicast.SendMessage(inputStruct, connection)
 }
 
 func main() {
-	// Use argparse library to get accurate command line data
-	parser := argparse.NewParser("", "Concurrent TCP Channels")
-	i := parser.Int("i", "int", &argparse.Options{Required: true, Help: "Source destination/identifiers"})
-	err := parser.Parse(os.Args)
-	if err != nil {
-		fmt.Print(parser.Usage(err))
-	}
-	s := strconv.Itoa(*i)
+	
+	connections := unicast.ReadJSON()
+	fmt.Println(connections)
 
-	// Use a wait group for goroutines
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go openTCPServerConnections(&s)
-	inputStruct, connection := parseInput(&s)
-	wg.Add(1)
-	go unicastSend(inputStruct, connection, &wg)
-	wg.Wait()
+	// // Use a wait group for goroutines
+	// var wg sync.WaitGroup
+	// // TODO: Scan for json => anonymous functions with wg.Done() + incorporate channels
+	// wg.Add(1)
+	// go openTCPServerConnections(&s)
+	// inputStruct, connection := parseInput(&s)
+	// wg.Add(1)
+	// go unicastSend(inputStruct, connection, &wg)
+	// wg.Wait()
 }

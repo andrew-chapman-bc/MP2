@@ -12,9 +12,8 @@ import (
 
 // UserInput holds user input such as message, destination and source
 type UserInput struct {
-	Destination string
+	UserName string
 	Message     string
-	Source 		string
 }
 
 // Delay keeps track of delay bounds from config
@@ -22,59 +21,27 @@ type Delay struct {
 	minDelay string
 	maxDelay string
 }
-// Connection holds the ip/port and source
-type Connection struct {
-	ip 		string
-	port 	string
-	source 	string
-}
 
 /*
-	@function: ScanConfigForClient
-	@description: Scans the config file using the user input destination and retrieves the ip/port that will later be used to connect to the TCP server
-	@exported: True
-	@params: {userInput} 
-	@returns: {Connection}
+	Connections: []Connection
+	IP: IP Address to connect to
 */
-func ScanConfigForClient(userInput UserInput) Connection {
-
-	destination := userInput.Destination
-	
-	// Open up config file
-	// TODO: create a variable which holds the destination of config file instead of hardcoding here
-	config, err := os.Open("config.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	scanner := bufio.NewScanner(config)
-	scanner.Split(bufio.ScanLines)
-	var connection Connection
-	counter := 0
-	for {
-		success := scanner.Scan()
-		if success == false {
-			err = scanner.Err()
-			if err == nil {
-				break
-			} else {
-				log.Fatal(err)
-				break
-			}
-		}
-		if counter != 0 {
-			// TODO: should do some more error handling here to make sure they are accurate ports/ips in the config
-			configArray := strings.Fields(scanner.Text())
-			if configArray[0] == destination {
-				connection.ip = configArray[1]
-				connection.port = configArray[2]
-				connection.source = userInput.Source
-			}
-		}
-		counter++
-	}
-	return connection
+type Connections struct {
+	Connections []Connection `json:"connections"`
+	IP string `json:"IP"`
 } 
+
+/*
+	Type: "Server"/"Client" whether it's server or client
+	Port: "1234", etc. Port attached to username
+	Username: name of connection
+	IP: IP address to connect to
+*/
+type Connection struct {
+	Type string `json:"Type"`
+	Port string `json:"Port"`
+	Username string `json:"Username"`
+}
 
 /*
 	@function: connectToTCPServer
@@ -103,8 +70,8 @@ func connectToTCPServer(connect string) (net.Conn, error) {
 	@params: {UserInput}, {Connection}
 	@returns: N/A
 */
-func SendMessage( messageParams UserInput, connection Connection ) {
-	connectionString := connection.ip + ":" + connection.port
+func SendMessage( messageParams UserInput, connection Connections, ip string) {
+	connectionString := connection.IP + ":" + ip
 	c, err := connectToTCPServer(connectionString)
 	if (err != nil) {
 		fmt.Println("Network Error: ", err)
@@ -116,9 +83,9 @@ func SendMessage( messageParams UserInput, connection Connection ) {
 	
 	// Sending the message to TCP Server
 	// Easier to send this over as strings since it is only one message, we want the source to know where it comes from
-	fmt.Fprintf(c, messageParams.Message + " " + messageParams.Source + "\n")
+	fmt.Fprintf(c, messageParams.Message + " " + "\n")
 	timeOfSend := time.Now().Format("02 Jan 06 15:04:05.000 MST")
-	fmt.Println("Sent message " + messageParams.Message + " to destination " + messageParams.Destination + " system time is: " + timeOfSend)
+	fmt.Println("Sent message " + messageParams.Message + " to destination " + messageParams.UserName + " system time is: " + timeOfSend)
 	
 } 
 
