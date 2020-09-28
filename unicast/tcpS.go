@@ -5,12 +5,8 @@ import (
 	"net"
 	"bufio"
 	"strings"
-	"time"
 	"os"
-	"log"
 	"io/ioutil"	
-	"math/rand"
-	"strconv"
 	"encoding/json"
 )
 
@@ -39,13 +35,13 @@ func ReadJSON() Connections {
 
 /*
 	@function: CreateUserInputStruct
-	@description: Uses a destination, message and source string to construct a UserInput struct to send and receive the message across the server/client
+	@description: Uses a username and message to construct a Message struct
 	@exported: True
-	@params: string, string, string
-	@returns: {UserInput}
+	@params: string, string
+	@returns: {Message}
 */
-func CreateUserInputStruct(username, message string) UserInput {
-	var input UserInput
+func CreateMessageStruct(username, message string) Message {
+	var input Message
 	input.UserName = username
 	input.Message = message
 	return input
@@ -59,13 +55,8 @@ func CreateUserInputStruct(username, message string) UserInput {
 	@params: net.Conn
 	@returns: N/A
 */
-func handleConnection(c net.Conn) {
-	// even though we don't support multi-messaging at the moment, no reason to possibly be running this multiple times inside the for loop
-	delay, err := getDelayParams()
-	if (err != nil) {
-		fmt.Println("Error: ", err)
-	}
-	
+func handleConnection(c net.Conn, message chan Message) {
+
 	for {
 		netData, err := bufio.NewReader(c).ReadString('\n')
         if err != nil {
@@ -73,56 +64,23 @@ func handleConnection(c net.Conn) {
             return
 		}
 		netArray := strings.Fields(netData)
-		// generate the network delay on the receive side, must do it here and not in the sendmessage function because we are using goroutines
-		generateDelay(delay)
-		timeOfReceive := time.Now().Format("02 Jan 06 15:04:05.000 MST")
-		fmt.Println("Received " + netArray[0] + " from destination " + netArray[1] + " system time is: " + timeOfReceive)
+		messageString := FormatMessage(netArray)
+		// send username hey, im bored
+		// STOP
+		messageStruct := CreateMessageStruct(netArray[1], messageString)
+		message <- messageStruct
 	}
 }
 
-
-
-/*
-	@function: getDelayParams
-	@description: Scans the config file for the first line to get the delay parameters that will be used to simulate the network delay
-	@exported: false
-	@params: N/A 
-	@returns: Delay, error
-*/
-func getDelayParams() (Delay, error) {
-	config, err := os.Open("config.txt")
-	scanner := bufio.NewScanner(config)
-	scanner.Split(bufio.ScanLines)
-	success := scanner.Scan()
-	if success == false {
-		err = scanner.Err()
-		if err == nil {
-			fmt.Println("Scanned first line")
-		} else {
-			log.Fatal(err)
-		}
+func FormatMessage(messageArr []string) string {
+	formattedMess := messageArr[2:]
+	message := ""
+	for i, word := range formattedMess {
+		message += word
 	}
-	delays := strings.Fields(scanner.Text())
-	var delayStruct Delay
-	delayStruct.minDelay = delays[0]
-	delayStruct.maxDelay = delays[1]
-	return delayStruct, err
-} 
+	return message
+}
 
-/*
-	@function: generateDelay
-	@description: Uses the delay parameters obtained from getDelayParams() to generate the delay that will be used in sendMessage function
-	@exported: false
-	@params: Delay
-	@returns: N/A
-*/
-func generateDelay (delay Delay) {
-	rand.Seed(time.Now().UnixNano())
-	min, _ := strconv.Atoi(delay.minDelay)
-	max, _ := strconv.Atoi(delay.maxDelay)
-	delayTime := rand.Intn(max - min + 1) + min
-	time.Sleep(time.Duration(delayTime) * time.Millisecond)
-} 
 
 /*
 	@function: connectToTCPClient
@@ -131,18 +89,28 @@ func generateDelay (delay Delay) {
 	@params: string
 	@returns: N/A
 */
-func ConnectToTCPClient(PORT string) {
+func ConnectToTCPClient(connection Connection, message chan Message, wg WaitGroup) {
+	port := connection.Port
 	// listen/connect to the tcp client
-	l, err := net.Listen("tcp4", ":" + PORT)
+	l, err := net.Listen("tcp4", ":" + port)
 	if err != nil {
 		fmt.Println(err)
 	}
 	defer l.Close()
-	for {
-		c, err := l.Accept()
-		if err != nil {
-			fmt.Println(err)
+	wg.Add(1)
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				fmt.Println(err)
+			}
+			handleConnection(c, message)
+			messageStruct := <- message
+			content := messageStruct.Message
+			if content == "Terminate" {
+				break
+			}	
 		}
-		go handleConnection(c)
-	}
+		wg.Done()
+	}()
 }

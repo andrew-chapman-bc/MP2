@@ -10,16 +10,10 @@ import (
 	"time"
 )
 
-// UserInput holds user input such as message, destination and source
-type UserInput struct {
+// Message holds username and message strings
+type Message struct {
 	UserName string
-	Message     string
-}
-
-// Delay keeps track of delay bounds from config
-type Delay struct {
-	minDelay string
-	maxDelay string
+	Message  string
 }
 
 /*
@@ -70,22 +64,35 @@ func connectToTCPServer(connect string) (net.Conn, error) {
 	@params: {UserInput}, {Connection}
 	@returns: N/A
 */
-func SendMessage( messageParams UserInput, connection Connections, ip string) {
-	connectionString := connection.IP + ":" + ip
-	c, err := connectToTCPServer(connectionString)
-	if (err != nil) {
-		fmt.Println("Network Error: ", err)
-	}
-	
-	if (err != nil) {
-		fmt.Println("Error: ", err)
+func SendMessage(messageParams Message, connection Connections, ip string) {
+	if (messageParams.Message == "EXIT") {
+		
+	} else {
+		port := ""
+		for _, connectionStruct := range connection.Connections {
+			if (connectionStruct.Type == "server") {
+				port = connectionStruct.Port
+			}
+		}
+
+		if port == "" {
+			fmt.Println("Empty Port, message will not send.")
+		}
+
+		connectionString := ip + ":" + port
+		c, err := connectToTCPServer(connectionString)
+		if (err != nil) {
+			fmt.Println("Network Error: ", err)
+		}
+		fmt.Fprintf(c, messageParams.Message)
+
 	}
 	
 	// Sending the message to TCP Server
 	// Easier to send this over as strings since it is only one message, we want the source to know where it comes from
-	fmt.Fprintf(c, messageParams.Message + " " + "\n")
-	timeOfSend := time.Now().Format("02 Jan 06 15:04:05.000 MST")
-	fmt.Println("Sent message " + messageParams.Message + " to destination " + messageParams.UserName + " system time is: " + timeOfSend)
+	//fmt.Fprintf(c, messageParams.Message + " " + "\n")
+	//timeOfSend := time.Now().Format("02 Jan 06 15:04:05.000 MST")
+	//fmt.Println("Sent message " + messageParams.Message + " to destination " + messageParams.UserName + " system time is: " + timeOfSend)
 	
 } 
 

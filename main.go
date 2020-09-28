@@ -27,61 +27,78 @@ func getInput() []string {
 
 /*
 	@function: parseInput
-	@description: Parses the UserInput into a {UserInput} and calls ScanConfig() to parse the parameters of TCP connection into a {Connection}
+	@description: Parses the UserInput into a {Message}
 	@exported: False
 	@params: N/A
-	@returns: {UserInput}, {Connection}
+	@returns: {Message}
 */
-func parseInput(source *string) (unicast.UserInput, unicast.Connection) {
+func parseInput(message chan unicast.Message)  {
 	inputArray := getInput()
-	inputStruct := unicast.CreateUserInputStruct(inputArray[1], inputArray[2], *source)
-	connection := unicast.ScanConfigForClient(inputStruct)
-	return inputStruct, connection
+	var inputStruct unicast.Message
+	if inputArray[0] == "EXIT" {
+		messageString := "EXIT"
+		inputStruct = unicast.CreateMessageStruct("", "EXIT")
+		message <- inputStruct
+	} else {
+		messageString := unicast.FormatMessage(inputArray)
+		inputStruct = unicast.CreateMessageStruct(inputArray[1], messageString)
+		message <- inputStruct
+	}
+
 }
 
 
-// TODO: Scan for json here
+
 /*
 	@function: openTCPServerConnections
-	@description: Opens all of the ports defined in the config file using ScanConfigForServer() to get an array of ports 
-					and ConnectToTCPClient() to open them
+	@description:
 	@exported: False
-	@params: {WaitGroup}
+	@params: N/A
 	@returns: N/A
 */
-func openTCPServerConnections(source *string) {
-	// Need to send the source string in here so we know what port to look for
-	openPort, err := unicast.ScanConfigForServer(*source)
-	if openPort == "" {
-		fmt.Println(err)
+func openTCPServerConnections(connections Connections, message chan Message, *wg WaitGroup) {
+	for i := 0; i < len(connections.Connections); i++ {
+		if (connections.Connections[i].Type == "server") {
+			serverConnection, err := connections.Connections[i]
+			if err != nil {
+				fmt.Println(err)
+			}
+			break
+		}
 	}
-	unicast.ConnectToTCPClient(openPort)
+	unicast.ConnectToTCPClient(serverConnection, message, wg)
 }
 
-/*
-	@function: unicast_send
-	@description: function used as a goroutine to call SendMessage() to pass data from client to server, utilizes waitgroup
-	@exported: False
-	@params: {UserInput}, {Connection}, {WaitGroup}
-	@returns: N/A
-*/
-func unicastSend(inputStruct unicast.UserInput, connection unicast.Connection) {
-	// Send the message using UserInput struct and Connection struct to easily pass around data
-	unicast.SendMessage(inputStruct, connection)
-}
 
 func main() {
 	
 	connections := unicast.ReadJSON()
-	fmt.Println(connections)
+	// Use a wait group for goroutines
+	messageChan := make(chan unicast.Message)
+	var wg sync.WaitGroup
+	// TODO: Scan for json => anonymous functions with wg.Done() + incorporate channels
+	wg.Add(1)
 
-	// // Use a wait group for goroutines
-	// var wg sync.WaitGroup
-	// // TODO: Scan for json => anonymous functions with wg.Done() + incorporate channels
-	// wg.Add(1)
-	// go openTCPServerConnections(&s)
-	// inputStruct, connection := parseInput(&s)
-	// wg.Add(1)
-	// go unicastSend(inputStruct, connection, &wg)
-	// wg.Wait()
+	go openTCPServerConnections(connections, messageChan, &wg WaitGroup)
+	
+	parseInput()
+	wg.Add(1)
+	go func() {
+		messageData := <- messageChan
+		unicast.SendMessage(messageData, connection, connections.IP)
+		wg.Done()
+	}()
+
+	wg.Wait()
 }
+
+// 1234
+// Lewis hello there
+
+
+// 4567
+// send Lewis hello there
+
+
+// 8543
+// Andy hello there
