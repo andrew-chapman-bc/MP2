@@ -8,6 +8,7 @@ import (
 	"os"
 	"io/ioutil"	
 	"encoding/json"
+	"sync"
 )
 
 
@@ -75,7 +76,7 @@ func handleConnection(c net.Conn, message chan Message) {
 func FormatMessage(messageArr []string) string {
 	formattedMess := messageArr[2:]
 	message := ""
-	for i, word := range formattedMess {
+	for _, word := range formattedMess {
 		message += word
 	}
 	return message
@@ -89,7 +90,7 @@ func FormatMessage(messageArr []string) string {
 	@params: string
 	@returns: N/A
 */
-func ConnectToTCPClient(connection Connection, message chan Message, wg WaitGroup) {
+func ConnectToTCPClient(connection Connection, message chan Message, wg *sync.WaitGroup) {
 	port := connection.Port
 	// listen/connect to the tcp client
 	l, err := net.Listen("tcp4", ":" + port)

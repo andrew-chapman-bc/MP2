@@ -1,13 +1,13 @@
 package unicast
 
 import (
-	"bufio"
+	//"bufio"
 	"fmt"
-	"log"
+	//"log"
 	"net"
-	"os"
-	"strings"
-	"time"
+	//"os"
+	//"strings"
+	//"time"
 )
 
 // Message holds username and message strings
@@ -65,12 +65,12 @@ func connectToTCPServer(connect string) (net.Conn, error) {
 	@returns: N/A
 */
 func SendMessage(messageParams Message, connection Connections, ip string) {
-	if (messageParams.Message == "EXIT") {
+	if messageParams.Message == "EXIT" {
 		
 	} else {
 		port := ""
 		for _, connectionStruct := range connection.Connections {
-			if (connectionStruct.Type == "server") {
+			if connectionStruct.Type == "server" {
 				port = connectionStruct.Port
 			}
 		}

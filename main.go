@@ -4,9 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"sync"
 	"strings"
-
+	"sync"
 )
 
 /*
@@ -36,7 +35,7 @@ func parseInput(message chan unicast.Message)  {
 	inputArray := getInput()
 	var inputStruct unicast.Message
 	if inputArray[0] == "EXIT" {
-		messageString := "EXIT"
+		//messageString := "EXIT"
 		inputStruct = unicast.CreateMessageStruct("", "EXIT")
 		message <- inputStruct
 	} else {
@@ -56,13 +55,15 @@ func parseInput(message chan unicast.Message)  {
 	@params: N/A
 	@returns: N/A
 */
-func openTCPServerConnections(connections Connections, message chan Message, *wg WaitGroup) {
+func openTCPServerConnections(connections unicast.Connections, message chan unicast.Message, wg *sync.WaitGroup) {
+	serverConnection := unicast.Connection{}
 	for i := 0; i < len(connections.Connections); i++ {
-		if (connections.Connections[i].Type == "server") {
-			serverConnection, err := connections.Connections[i]
-			if err != nil {
-				fmt.Println(err)
-			}
+		if connections.Connections[i].Type == "server" {
+			//used to have an err here, might need to put it back somewhere
+			serverConnection = connections.Connections[i]
+			//if err != nil {
+			//	fmt.Println(err)
+			//}
 			break
 		}
 	}
@@ -79,13 +80,13 @@ func main() {
 	// TODO: Scan for json => anonymous functions with wg.Done() + incorporate channels
 	wg.Add(1)
 
-	go openTCPServerConnections(connections, messageChan, &wg WaitGroup)
+	go openTCPServerConnections(connections, messageChan, &wg)
 	
-	parseInput()
+	parseInput(messageChan)
 	wg.Add(1)
 	go func() {
 		messageData := <- messageChan
-		unicast.SendMessage(messageData, connection, connections.IP)
+		unicast.SendMessage(messageData, connections, connections.IP)
 		wg.Done()
 	}()
 
