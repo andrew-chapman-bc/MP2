@@ -108,7 +108,7 @@ func ConnectToTCPClient(connection Connection, message chan Message, wg *sync.Wa
 			handleConnection(c, message)
 			messageStruct := <- message
 			content := messageStruct.Message
-			if content == "Terminate" {
+			if content == "EXIT" {
 				break
 			}	
 		}
