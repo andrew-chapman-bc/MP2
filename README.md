@@ -30,27 +30,17 @@ send matt hello there
 
 Should output on third terminal
 ```bash 
-S
-```
-To see this message go back to terminal 2
-
-The  following output should be listed with different time
-```bash
-Received hello from process 1 system time is: 14 Sep 20 18:19 EDT
-```
-If you want to send a message back to terminal 1, input
-```bash
-send 2 hi
+Received hello there from andrew
 ```
 
-Should output on this terminal with a different time
-```bash 
-Sent message hi to destination 1 system time is: 14 Sep 20 18:19 EDT
+If you want to send a message back to terminal 2, input
+```bash
+send andrew hi sir
 ```
 
-The  following output should be printed on terminal 1 with different time
+The  following output should be printed on terminal 2 
 ```bash
-Received hi from process 2 system time is: 14 Sep 20 18:19 EDT
+Received hi sir from matt
 ```
 
 ---
@@ -97,6 +87,7 @@ type Connection struct {
 	Username string `json:"Username"`
 }
 ```
+The ladder two structs use the json file to get their information 
 
 # json file
 The json file has the following format 
@@ -211,6 +202,7 @@ The processes can be found in the unicast directory
 
 In tcpC.go is where the message is sent out to the server
 
+In tcpS.go is where the message is handled
 
 
 ### Shortcomings and Potential Improvemnts 
