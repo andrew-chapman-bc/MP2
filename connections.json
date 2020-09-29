@@ -7,18 +7,8 @@
         },
         {
             "Type": "client",
-            "Port": "4567",
+            "Port": "1234",
             "Username": "Andy"
-        },
-        {
-            "Type": "client",
-            "Port": "8543",
-            "Username": "Lewis"
-        },
-        {
-            "Type": "client",
-            "Port": "1432",
-            "Username": "Darius"
         }
     ],
     "IP": "127.0.0.1"
