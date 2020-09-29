@@ -97,6 +97,7 @@ func main() {
 		}
 		wg.Add(2)
 		go func() {
+			defer wg.Done()
 			err := serv.RunServ(inputChan, isUpdatingChan, &wg)
 			if err != nil {
 				fmt.Println(err)
@@ -104,9 +105,11 @@ func main() {
 			}
 		}()
 		go func() {
+			defer wg.Done()
 			err := parseServInput(inputChan)
 			if err != nil {
 				fmt.Println(err)
+				return
 			}
 		}()
 	default:
@@ -119,15 +122,19 @@ func main() {
 		}
 		wg.Add(2)
 		go func() {
+			defer wg.Done()
 			err := cli.RunCli(messageChan)
 			if err != nil {
 				fmt.Println(err)
+				return
 			}
 		}()
 		go func() {
+			defer wg.Done()
 			err := parseCliInput(messageChan, userName)
 			if err != nil {
 				fmt.Println(err)
+				return
 			}
 		}()
 

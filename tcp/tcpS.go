@@ -78,6 +78,7 @@ func (serv *Server) handleConnections(conns map[string]net.Conn, isUpdatingChan 
 			isUpdatingChan <- false
 		}
 		wg.Add(1)
+		defer wg.Done()
         go serv.handleConnection(conn, conns)
     }
     return
