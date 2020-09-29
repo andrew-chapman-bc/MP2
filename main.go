@@ -95,7 +95,7 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		wg.Add(2)
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			err := serv.RunServ(inputChan, isUpdatingChan, &wg)
@@ -104,6 +104,7 @@ func main() {
 				return
 			}
 		}()
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			err := parseServInput(inputChan)
@@ -112,6 +113,8 @@ func main() {
 				return
 			}
 		}()
+		wg.Wait()
+		break
 	default:
 		var cli *tcp.Client
 		userName := cmdLineArr[1] 
@@ -120,7 +123,7 @@ func main() {
 			fmt.Println(err)
 			break
 		}
-		wg.Add(2)
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			err := cli.RunCli(messageChan)
@@ -129,6 +132,7 @@ func main() {
 				return
 			}
 		}()
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			err := parseCliInput(messageChan, userName)
@@ -137,8 +141,8 @@ func main() {
 				return
 			}
 		}()
-
+		wg.Wait()
+		break
 	} 
-	wg.Wait()
 }
 
