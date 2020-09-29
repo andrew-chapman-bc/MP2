@@ -33,16 +33,16 @@ func getInput() []string {
 	@params: N/A
 	@returns: {Message}
 */
-func parseInput(message chan unicast.Message)  {
+func parseInput(message chan unicast.Message, sender string)  {
 	inputArray := getInput()
 	var inputStruct unicast.Message
 	if inputArray[0] == "EXIT" {
 		//messageString := "EXIT"
-		inputStruct = unicast.CreateMessageStruct("", "EXIT")
+		inputStruct = unicast.CreateMessageStruct("", "EXIT", "")
 		message <- inputStruct
 	} else {
 		messageString := unicast.FormatMessage(inputArray)
-		inputStruct = unicast.CreateMessageStruct(inputArray[1], messageString)
+		inputStruct = unicast.CreateMessageStruct(inputArray[1], messageString, sender)
 		message <- inputStruct
 	}
 
@@ -57,15 +57,12 @@ func parseInput(message chan unicast.Message)  {
 	@params: N/A
 	@returns: N/A
 */
-func openTCPServerConnections(connections unicast.Connections, message chan unicast.Message, wg *sync.WaitGroup) {
+func openTCPServerConnections(connections unicast.Connections, message chan unicast.Message, wg *sync.WaitGroup, ) {
 	serverConnection := unicast.Connection{}
 	for i := 0; i < len(connections.Connections); i++ {
 		if connections.Connections[i].Type == "server" {
 			//used to have an err here, might need to put it back somewhere
 			serverConnection = connections.Connections[i]
-			//if err != nil {
-			//	fmt.Println(err)
-			//}
 			break
 		}
 	}
@@ -73,7 +70,7 @@ func openTCPServerConnections(connections unicast.Connections, message chan unic
 }
 
 
-func main() {
+func getCmdLine() string {
 	// Use argparse library to get accurate command line data
 	parser := argparse.NewParser("", "Concurrent TCP Channels")
 	s := parser.String("s", "string", &argparse.Options{Required: true, Help: "String to print"})
@@ -83,35 +80,39 @@ func main() {
 		// This can also be done by passing -h or --help flags
 		fmt.Print(parser.Usage(err))
 	}
-	fmt.Println("WE GOT THE PARSE" , *s)
+	return &s
+}
 
-	connections := unicast.ReadJSON()
-	// Use a wait group for goroutines
-	messageChan := make(chan unicast.Message)
-	var wg sync.WaitGroup
-	// TODO: Scan for json => anonymous functions with wg.Done() + incorporate channels
-	wg.Add(1)
-
-	go openTCPServerConnections(connections, messageChan, &wg)
+func main() {
 	
-	parseInput(messageChan)
-	wg.Add(1)
-	go func() {
-		messageData := <- messageChan
-		unicast.SendMessage(messageData, connections, connections.IP)
-		wg.Done()
-	}()
+	s := getCmdLine()
+	fmt.Println("WE GOT THE PARSE" , s)
+	
+	
+	cmdLineArr := strings.Fields(s)
+	connectionType := cmdLineArr[0]
+	var wg sync.WaitGroup
+	messageChan := make(chan unicast.Message)
 
+	if (connectionType == "server") {
+		port := cmdLineArr[1]
+		connections := unicast.ReadJSONForServer(port)
+		wg.Add(1)
+		go openTCPServerConnections(connections, messageChan, &wg)
+		messageData := <- messageChan
+		wg.Add(1)
+		go unicast.SendMessage(messageData, connections)
+	} else {
+		userName := cmdLineArr[1]
+		connections := unicast.ReadJSONForClient(userName)
+		parseInput(messageChan, userName)
+		wg.Add(1)
+		go func() {
+			messageData := <- messageChan
+			unicast.SendMessage(messageData, connections)
+			wg.Done()
+		}()
+	}
 	wg.Wait()
 }
 
-// 1234
-// Lewis hello there
-
-
-// 4567
-// send Lewis hello there
-
-
-// 8543
-// Andy hello there

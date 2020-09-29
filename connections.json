@@ -7,17 +7,17 @@
         },
         {
             "Type": "client",
-            "Port": "4567",
+            "Port": "1234",
             "Username": "Andy"
         },
         {
             "Type": "client",
-            "Port": "8543",
+            "Port": "1234",
             "Username": "Lewis"
         },
         {
             "Type": "client",
-            "Port": "1432",
+            "Port": "1234",
             "Username": "Darius"
         }
     ],

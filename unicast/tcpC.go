@@ -5,7 +5,9 @@ import (
 	"fmt"
 	//"log"
 	"net"
-	//"os"
+	"os"
+	"io/ioutil"
+	"encoding/json"
 	//"strings"
 	//"time"
 )
@@ -14,6 +16,7 @@ import (
 type Message struct {
 	UserName string
 	Message  string
+	Sender   string
 }
 
 /*
@@ -36,6 +39,41 @@ type Connection struct {
 	Port string `json:"Port"`
 	Username string `json:"Username"`
 }
+
+
+
+
+func ReadJSONForClient(userName string) Connections {
+	jsonFile, err := os.Open("connections.json")
+	var connections Connections
+	if err != nil {
+		fmt.Println(err)
+		return connections
+	}
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	json.Unmarshal(byteValue, &connections)
+	for i := 0; i < len(connections.Connections); i++ {
+		if connections.Connections[i].Username == userName {
+			return connections
+		}
+	}
+	var newConn Connection
+	newConn.Port = connections.Connections[0].Port
+	newConn.Type = "client"
+	newConn.Username = userName
+	
+	connections.Connections = append(connections.Connections, newConn)
+	
+	jsonData, err := json.Marshal(connections)
+	if err != nil {
+		fmt.Println("Error marshalling JSON")
+		return connections
+	}
+
+	ioutil.WriteFile("connections.json", jsonData, os.ModePerm)
+	return connections
+}
+
 
 /*
 	@function: connectToTCPServer
@@ -64,9 +102,9 @@ func connectToTCPServer(connect string) (net.Conn, error) {
 	@params: {UserInput}, {Connection}
 	@returns: N/A
 */
-func SendMessage(messageParams Message, connection Connections, ip string) {
+func SendMessage(messageParams Message, connection Connections) {
 	if messageParams.Message == "EXIT" {
-		
+		// TODO: close stuff
 	} else {
 		port := ""
 		for _, connectionStruct := range connection.Connections {
@@ -79,20 +117,18 @@ func SendMessage(messageParams Message, connection Connections, ip string) {
 			fmt.Println("Empty Port, message will not send.")
 		}
 
-		connectionString := ip + ":" + port
+		connectionString := connection.IP + ":" + port
 		c, err := connectToTCPServer(connectionString)
 		if (err != nil) {
 			fmt.Println("Network Error: ", err)
 		}
-		fmt.Fprintf(c, messageParams.Message)
+		jsonData, err := json.Marshal(messageParams)
+		encoder := json.NewEncoder(c)
+		_ = encoder.Encode(jsonData)
+		
 
 	}
 	
-	// Sending the message to TCP Server
-	// Easier to send this over as strings since it is only one message, we want the source to know where it comes from
-	//fmt.Fprintf(c, messageParams.Message + " " + "\n")
-	//timeOfSend := time.Now().Format("02 Jan 06 15:04:05.000 MST")
-	//fmt.Println("Sent message " + messageParams.Message + " to destination " + messageParams.UserName + " system time is: " + timeOfSend)
 	
 } 
 

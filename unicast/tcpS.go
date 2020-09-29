@@ -3,8 +3,6 @@ package unicast
 import (
 	"fmt"
 	"net"
-	"bufio"
-	"strings"
 	"os"
 	"io/ioutil"	
 	"encoding/json"
@@ -21,16 +19,30 @@ import (
 	@params: N/A
 	@returns: Connections
 */
-func ReadJSON() Connections {
+func ReadJSONForServer(port string) Connections {
 	jsonFile, err := os.Open("connections.json")
 	var connections Connections
 	if err != nil {
 		fmt.Println(err)
 		return connections
 	}
-	defer jsonFile.Close()
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	json.Unmarshal(byteValue, &connections)
+	for i := 0; i < len(connections.Connections); i++ {
+		if (connections.Connections[i].Type == "server" ) {
+			if (connections.Connections[i].Port != port) {
+				connections.Connections[i].Port = port
+			}
+		}
+	}
+	jsonData, err := json.Marshal(connections)
+	if err != nil {
+		fmt.Println("Error marshalling JSON")
+		return connections
+	}
+	// re-write to json
+	ioutil.WriteFile("connections.json", jsonData, os.ModePerm)
+
 	return connections
 }
 
@@ -41,10 +53,11 @@ func ReadJSON() Connections {
 	@params: string, string
 	@returns: {Message}
 */
-func CreateMessageStruct(username, message string) Message {
+func CreateMessageStruct(username, message, sender string) Message {
 	var input Message
 	input.UserName = username
 	input.Message = message
+	input.Sender = sender
 	return input
 }
 
@@ -59,19 +72,17 @@ func CreateMessageStruct(username, message string) Message {
 func handleConnection(c net.Conn, message chan Message) {
 
 	for {
-		netData, err := bufio.NewReader(c).ReadString('\n')
-        if err != nil {
-            fmt.Println(err)
-            return
-		}
-		netArray := strings.Fields(netData)
-		messageString := FormatMessage(netArray)
-		// send username hey, im bored
-		// STOP
-		messageStruct := CreateMessageStruct(netArray[1], messageString)
+		decoder := json.NewDecoder(c)
+		var messageStruct Message
+		decoder.Decode(&messageStruct)
+
+		encoder := json.NewEncoder(c)
+		encoder.Encode(messageStruct)
 		message <- messageStruct
+
 	}
 }
+
 
 func FormatMessage(messageArr []string) string {
 	formattedMess := messageArr[2:]
@@ -97,8 +108,8 @@ func ConnectToTCPClient(connection Connection, message chan Message, wg *sync.Wa
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer l.Close()
 	wg.Add(1)
+	defer l.Close()
 	go func() {
 		for {
 			c, err := l.Accept()
