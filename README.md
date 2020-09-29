@@ -88,7 +88,43 @@ type Connection struct {
 	Username string `json:"Username"`
 }
 ```
+
 The ladder two structs use the json file to get their information 
+
+We also have a struct for each TCP connection, both Client and Server, they are as follows:
+
+Client holds the structure of our TCP Client implementation
+```
+type Client struct {
+	Username string
+	client net.Conn
+}
+```
+
+
+Server holds the structure of our TCP server implemenation
+```
+type Server struct {
+    	port   string
+	server net.Listener
+}
+```
+
+
+We have these two structs in order to be able to instantiate Server and Client structs that are easier to use in main, as well as 
+help with error handling and code flow.
+
+To instantiate these two structs, we call either the below function for the client
+```
+func (cli *Client) RunCli(messageChan chan util.Message) (err error)
+```
+
+and the ladder function for the server
+
+```
+func (serv *Server) RunServ(inputChan chan string, isUpdatingChan chan bool, wg *sync.WaitGroup) (err error) 
+```
+
 
 # json file
 The json file has the following format 
@@ -199,11 +235,9 @@ If the user enters "EXIT" the program will terminate its connection
 The user will no longer be able to send/recieve messages
 
 # Processes
-The processes can be found in the unicast directory
+The processes can be found in the TCP directory
 
-In tcpC.go is where the message is sent out to the server
 
-In tcpS.go is where the message is handled
 
 
 ### Shortcomings and Potential Improvemnts 
