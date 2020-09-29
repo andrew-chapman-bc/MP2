@@ -10,22 +10,22 @@ $ go get -u -v github.com/akamensky/argparse
 
 Simply repeat steps in new terminals to have as many processes as needed
 
-Open one terminal and enter
+Open one terminal for server and enter
 ```bash
-go run main.go --string "server 1234 server"
+go run main.go --string "server 1234"
 ``` 
-Open up a second terminal and enter
+Open up a second terminal for client and enter
 ```bash
-go run main.go --string "client 1234 andrew"
+go run main.go --string "client Andy"
 ``` 
-Then open up a third terminal and enter
+Then open up a third terminal for client and enter
 ```bash
-go run main.go --string "client 1234 matt"
+go run main.go --string "client Matt"
 ```
 To send a message, go to second terminal and send
 
 ```bash
-send matt hello there
+send Matt hello there
 ```
 
 Should output on third terminal
@@ -66,6 +66,7 @@ The Message struct is used to easily access and pass around the username and mes
 type Message struct {
 	UserName string
 	Message  string
+	Sender   string
 }
 
 ```
@@ -127,12 +128,12 @@ For example:
         },
         {
             "Type": "client",
-            "Port": "4567",
+            "Port": "1234",
             "Username": "Andy"
         },
         {
             "Type": "client",
-            "Port": "8543",
+            "Port": "1234",
             "Username": "Lewis"
         }
     ],
@@ -156,17 +157,17 @@ Goes to
         },
         {
             "Type": "client",
-            "Port": "4567",
+            "Port": "1234",
             "Username": "Andy"
         },
         {
             "Type": "client",
-            "Port": "8543",
+            "Port": "1234",
             "Username": "Lewis"
         },
         {
             "Type": "client",
-            "Port": "1432",
+            "Port": "1234",
             "Username": "Darius"
         }
     ],
