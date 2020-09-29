@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"../util"
+	"strings"
 )
 
 
@@ -58,6 +59,9 @@ func (cli *Client) RunCli(messageChan chan util.Message) (err error) {
 		fmt.Println(err)
 		return errors.New("Could not dial... Incorrect address?")
 	}
+
+	go cli.listenForMessage(cli.client, messageChan)
+
 	for {
 		if messageData := <- messageChan; messageData.Message == "EXIT" {
 			break
@@ -90,6 +94,34 @@ func (cli *Client) sendMessageToServer(conn net.Conn, messageChan chan util.Mess
 	fmt.Println("data sent!", messageData)
 	return
 }
+
+/*
+	@function: listenForMessage
+	@description: Listens for a message from the server and deserializes it 
+	@exported: false
+	@family: Client
+	@params: net.Conn, chan {Message}
+	@returns: error
+*/
+func (cli *Client) listenForMessage(conn net.Conn, messageChan chan util.Message) (err error) {
+	for {
+		decoder := json.NewDecoder(conn)
+		var mess util.Message
+		decoder.Decode(&mess)
+
+		if mess.Message == "error" {
+			return errors.New("Person not connected yet")
+		} else if mess.Message == "EXIT" {
+			conn.Close()
+			os.Exit(0)
+			messageChan <- util.Message{"","EXIT",""}
+		} else if mess.Message != "" {
+			fmt.Printf("Received the message from" + strings.TrimSpace(mess.Sender) + "\n") 
+			fmt.Printf("Message:" + strings.TrimSpace(mess.Message))
+		}
+	}
+}
+
 
 
 /*
