@@ -1,13 +1,15 @@
 package main
 
 import (
-	"./unicast"
+	"./tcp"
 	"bufio"
 	"fmt"
 	"github.com/akamensky/argparse"
 	"os"
 	"strings"
 	"sync"
+	"errors"
+	"./util"
 )
 
 /*
@@ -33,41 +35,31 @@ func getInput() []string {
 	@params: N/A
 	@returns: {Message}
 */
-func parseInput(message chan unicast.Message, sender string)  {
+func parseServInput(inputChan chan string) (err error) {
 	inputArray := getInput()
-	var inputStruct unicast.Message
-	if inputArray[0] == "EXIT" {
-		//messageString := "EXIT"
-		inputStruct = unicast.CreateMessageStruct("", "EXIT", "")
-		message <- inputStruct
-	} else {
-		messageString := unicast.FormatMessage(inputArray)
-		inputStruct = unicast.CreateMessageStruct(inputArray[1], messageString, sender)
-		message <- inputStruct
-	}
-
-}
-
-
-
-/*
-	@function: openTCPServerConnections
-	@description:
-	@exported: False
-	@params: N/A
-	@returns: N/A
-*/
-func openTCPServerConnections(connections unicast.Connections, message chan unicast.Message, wg *sync.WaitGroup, ) {
-	serverConnection := unicast.Connection{}
-	for i := 0; i < len(connections.Connections); i++ {
-		if connections.Connections[i].Type == "server" {
-			//used to have an err here, might need to put it back somewhere
-			serverConnection = connections.Connections[i]
-			break
+	if len(inputArray) != 0 {
+		if inputArray[0] == "EXIT" {
+			inputChan <- "EXIT"
 		}
+	} else {
+		return errors.New("Error parsing server input")
 	}
-	unicast.ConnectToTCPClient(serverConnection, message, wg)
+	return
 }
+
+func parseCliInput(messageChan chan util.Message, userName string) (err error) {
+	messageArray := getInput()
+	if len(messageArray) != 0 {
+		messageStruct := util.CreateMessageStruct(messageArray[1], util.FormatMessage(messageArray), userName)
+		messageChan <- messageStruct
+	} else {
+		return errors.New("Error parsing client input")
+	}
+	return
+}
+
+
+
 
 
 func getCmdLine() string {
@@ -80,39 +72,66 @@ func getCmdLine() string {
 		// This can also be done by passing -h or --help flags
 		fmt.Print(parser.Usage(err))
 	}
-	return &s
+	return *s
 }
 
 func main() {
 	
 	s := getCmdLine()
-	fmt.Println("WE GOT THE PARSE" , s)
-	
-	
 	cmdLineArr := strings.Fields(s)
 	connectionType := cmdLineArr[0]
 	var wg sync.WaitGroup
-	messageChan := make(chan unicast.Message)
-
-	if (connectionType == "server") {
+	inputChan := make(chan string)
+	isUpdatingChan := make(chan bool)
+	messageChan := make(chan util.Message)
+	
+	// Server -> Read JSON/Read Input/handleConnections 
+	// Client -> Write JSON/Read Input/Write to server
+	switch connectionType {
+	case "server":
+		var serv *tcp.Server
 		port := cmdLineArr[1]
-		connections := unicast.ReadJSONForServer(port)
-		wg.Add(1)
-		go openTCPServerConnections(connections, messageChan, &wg)
-		messageData := <- messageChan
-		wg.Add(1)
-		go unicast.SendMessage(messageData, connections)
-	} else {
-		userName := cmdLineArr[1]
-		connections := unicast.ReadJSONForClient(userName)
-		parseInput(messageChan, userName)
-		wg.Add(1)
+		serv, err := tcp.NewTCPServer(port)
+		if err != nil {
+			fmt.Println(err)
+		}
+		wg.Add(2)
 		go func() {
-			messageData := <- messageChan
-			unicast.SendMessage(messageData, connections)
-			wg.Done()
+			err := serv.RunServ(inputChan, isUpdatingChan, &wg)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 		}()
-	}
+		go func() {
+			err := parseServInput(inputChan)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}()
+	default:
+		var cli *tcp.Client
+		userName := cmdLineArr[1] 
+		cli, err := tcp.NewTCPClient(userName)
+		if err != nil {
+			fmt.Println(err)
+			break
+		}
+		wg.Add(2)
+		go func() {
+			err := cli.RunCli(messageChan)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}()
+		go func() {
+			err := parseCliInput(messageChan, userName)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}()
+
+	} 
 	wg.Wait()
 }
 
