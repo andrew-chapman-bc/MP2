@@ -33,10 +33,10 @@ type Connection struct {
 }
 
 /*
-	@function: CreateUserInputStruct
-	@description: Uses a username and message to construct a Message struct
+	@function: CreateMessageStruct
+	@description: Uses receiver, message and sender to create a message struct
 	@exported: True
-	@params: string, string
+	@params: string, string, string
 	@returns: {Message}
 */
 func CreateMessageStruct(receiver, message, sender string) Message {
@@ -47,8 +47,13 @@ func CreateMessageStruct(receiver, message, sender string) Message {
 	return input
 }
 
-
-// FormatMessage formats the message so it can be multi-spaced
+/*
+	@function: FormatMessage
+	@description: formats the message so it can be multi-spaced
+	@exported: True
+	@params: []string
+	@returns: string
+*/
 func FormatMessage(messageArr []string) string {
 	formattedMess := messageArr[2:]
 	message := ""

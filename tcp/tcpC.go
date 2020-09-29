@@ -20,7 +20,14 @@ type Client struct {
 	client net.Conn
 }
 
-// NewTCPClient creates a new Client
+/*
+	@function: NewTCPClient
+	@description: Creates a Client instance which can be used in the main function
+	@exported: True
+	@family: N/A
+	@params: string
+	@returns: {*Client}, error
+*/
 func NewTCPClient(username string) (*Client, error) {
 	client := Client{Username: username}
 	// if username is empty -> throw error
@@ -31,7 +38,14 @@ func NewTCPClient(username string) (*Client, error) {
 	return &client, nil
 }
 
-// RunCli starts the TCPClient
+/*
+	@function: RunCli
+	@description: Starts the TCP client which calls the function to send message to server
+	@exported: True
+	@family: Client
+	@params: chan {Message}
+	@returns: error
+*/
 func (cli *Client) RunCli(messageChan chan util.Message) (err error) {
 	connection, err := cli.readJSONForClient(cli.Username)
 	if err != nil {
@@ -54,6 +68,14 @@ func (cli *Client) RunCli(messageChan chan util.Message) (err error) {
 
 }
 
+/*
+	@function: sendMessageToServer
+	@description: Reads the message channel and serializes the data to send over to server
+	@exported: false
+	@family: Client
+	@params: net.Conn, chan {Message}
+	@returns: error
+*/
 func (cli *Client) sendMessageToServer(conn net.Conn, messageChan chan util.Message) (err error) {
 	
 	messageData := <- messageChan
@@ -70,6 +92,14 @@ func (cli *Client) sendMessageToServer(conn net.Conn, messageChan chan util.Mess
 }
 
 
+/*
+	@function: readJSONForClient
+	@description: Reads the JSON File and adds to it if needed, then returns the specific connection that is needed
+	@exported: false
+	@family: Client
+	@params: string
+	@returns: {Connection}, error
+*/
 func (cli *Client) readJSONForClient(userName string) (util.Connection, error) {
 	jsonFile, err := os.Open("connections.json")
 	var connections util.Connections

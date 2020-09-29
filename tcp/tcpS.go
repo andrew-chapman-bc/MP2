@@ -18,7 +18,14 @@ type Server struct {
 	server net.Listener
 }
 
-// NewTCPServer creates a new Server
+/*
+	@function: NewTCPServer
+	@description: Creates a Server Instance which can then be used in the main function
+	@exported: True
+	@family: N/A
+	@params: string
+	@returns: {*Server}, error
+*/
 func NewTCPServer(port string) (*Server, error) {
 	server := Server{port: port}
 
@@ -30,8 +37,14 @@ func NewTCPServer(port string) (*Server, error) {
     return &server, nil
 }
 
-
-// RunServ starts the TCP Server.
+/*
+	@function: RunServ
+	@description: Starts the TCP server and calls handle connections
+	@exported: True
+	@family: Server
+	@params: chan string, chan bool, waitgroup
+	@returns: error
+*/
 func (serv *Server) RunServ(inputChan chan string, isUpdatingChan chan bool, wg *sync.WaitGroup) (err error) {
 	// Create map of connections
 	conns := make(map[string]net.Conn)
@@ -54,8 +67,14 @@ func (serv *Server) RunServ(inputChan chan string, isUpdatingChan chan bool, wg 
     }
     return
 }
-
-
+/*
+	@function: handleConnections
+	@description: calls the Accept function in a loop and calls another handleConnection goroutine which decodes data and sends it to the specified client
+	@exported: false
+	@family: Server
+	@params: map[string]net.Conn, chan bool, WaitGroup
+	@returns: error
+*/
 func (serv *Server) handleConnections(conns map[string]net.Conn, isUpdatingChan chan bool, wg *sync.WaitGroup) (err error) {
 	
     for {
@@ -84,7 +103,15 @@ func (serv *Server) handleConnections(conns map[string]net.Conn, isUpdatingChan 
     return
 }
 
-func (serv *Server) handleConnection(conn net.Conn, conns map[string]net.Conn) {
+/*
+	@function: handleConnection
+	@description: a goroutine which unserializes JSON data and then calls the sendMessageToClient function
+	@exported: false
+	@family: Server
+	@params: net.Conn, map[string]net.Conn
+	@returns: error
+*/
+func (serv *Server) handleConnection(conn net.Conn, conns map[string]net.Conn) (err error) {
 
 	dec := json.NewDecoder(conn)
 	var mess util.Message
@@ -92,14 +119,22 @@ func (serv *Server) handleConnection(conn net.Conn, conns map[string]net.Conn) {
 		err := dec.Decode(&mess)
 		fmt.Println(mess)
 		if err != nil {
-			fmt.Println("Network Error: Error decoding JSON!")
 			conn.Close()
+			return errors.New("Error decoding JSON")
 		}
 
 		serv.sendMessageToClient(mess, conns)
     }
 }
 
+/*
+	@function: sendMessageToClient
+	@description: serializes JSON data and sends it over to the specified client
+	@exported: false
+	@family: Server
+	@params: {Message}, map[string]net.Conn
+	@returns: error
+*/
 func (serv *Server) sendMessageToClient(message util.Message, conns map[string]net.Conn) (err error) {
 	
 	conn := conns[message.Receiver]
@@ -121,11 +156,12 @@ func (serv *Server) sendMessageToClient(message util.Message, conns map[string]n
 
 
 /*
-	@function: readJSON
+	@function: readJSONForServer
 	@description: Reads the JSON and returns a struct which contains 
 		the type, port, username and IP
-	@exported: True
-	@params: N/A
+	@exported: False
+	@family: Server
+	@params: string
 	@returns: Connections
 */
 func (serv *Server) readJSONForServer(port string) util.Connections {
