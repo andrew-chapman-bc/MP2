@@ -1,8 +1,10 @@
 package main
+
 import (
 	"./unicast"
 	"bufio"
 	"fmt"
+	"github.com/akamensky/argparse"
 	"os"
 	"strings"
 	"sync"
@@ -72,7 +74,17 @@ func openTCPServerConnections(connections unicast.Connections, message chan unic
 
 
 func main() {
-	
+	// Use argparse library to get accurate command line data
+	parser := argparse.NewParser("", "Concurrent TCP Channels")
+	s := parser.String("s", "string", &argparse.Options{Required: true, Help: "String to print"})
+	err := parser.Parse(os.Args)
+	if err != nil {
+		// In case of error print error and print usage
+		// This can also be done by passing -h or --help flags
+		fmt.Print(parser.Usage(err))
+	}
+	fmt.Println("WE GOT THE PARSE" , *s)
+
 	connections := unicast.ReadJSON()
 	// Use a wait group for goroutines
 	messageChan := make(chan unicast.Message)
