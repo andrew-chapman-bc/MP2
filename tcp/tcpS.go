@@ -9,6 +9,7 @@ import (
 	"errors"
 	"../util"
 	"sync"
+	"bufio"
 )
 
 
@@ -17,6 +18,7 @@ type Server struct {
     port   string
 	server net.Listener
 }
+
 
 /*
 	@function: NewTCPServer
@@ -45,24 +47,24 @@ func NewTCPServer(port string) (*Server, error) {
 	@params: chan string, chan bool, waitgroup
 	@returns: error
 */
-func (serv *Server) RunServ(inputChan chan string, isUpdatingChan chan bool, wg *sync.WaitGroup) (err error) {
+func (serv *Server) RunServ(inputChan chan string, wg *sync.WaitGroup) (err error) {
 	// Create map of connections
 	conns := make(map[string]net.Conn)
 
-	serv.server, err = net.Listen("tcp", ":" + serv.port)
+	serv.server, err = net.Listen("tcp4", ":" + serv.port)
     if err != nil {
-        return errors.New("Could not listen... Incorrect port?")
+        return err
 	}
+	fmt.Println("Listening to the port:", serv.port)
+	
+	defer serv.server.Close()
+
     for {
-        conn, err := serv.server.Accept()
-        if err != nil || conn == nil {
-            err = errors.New("Network Error: Can't accept this connection")
+		serv.handleConnections(conns, wg)
+		inputData := <- inputChan
+		if inputData == "EXIT" {
+			serv.server.Close()
 			break
-		}
-		serv.handleConnections(conns, isUpdatingChan, wg)
-		// if we get an exit from I/O -> Close
-		if inputData := <- inputChan; inputData == "EXIT" {
-			conn.Close()
 		}
     }
     return
@@ -75,10 +77,9 @@ func (serv *Server) RunServ(inputChan chan string, isUpdatingChan chan bool, wg 
 	@params: map[string]net.Conn, chan bool, WaitGroup
 	@returns: error
 */
-func (serv *Server) handleConnections(conns map[string]net.Conn, isUpdatingChan chan bool, wg *sync.WaitGroup) (err error) {
+func (serv *Server) handleConnections(conns map[string]net.Conn, wg *sync.WaitGroup) (err error) {
 	
-    for {
-
+	for {
 		conn, err := serv.server.Accept()
 		
         if err != nil || conn == nil {
@@ -86,20 +87,14 @@ func (serv *Server) handleConnections(conns map[string]net.Conn, isUpdatingChan 
             break
 		}
 
-		// constantly checking for new connections
-		if isUpdating := <- isUpdatingChan; isUpdating == true {
-			connections := serv.readJSONForServer(serv.port)
-			for _, connect := range connections.Connections {
-				if (connect.Type != "server") {
-					conns[connect.Username] = conn
-				}
-			}
-			isUpdatingChan <- false
-		}
+		user, err := bufio.NewReader(conn).ReadString('\n')
+		fmt.Println("user", user)
+		conns[user] = conn
+		fmt.Println(conns)
 		wg.Add(1)
-		defer wg.Done()
         go serv.handleConnection(conn, conns)
-    }
+	}
+	wg.Done()
     return
 }
 
@@ -112,16 +107,17 @@ func (serv *Server) handleConnections(conns map[string]net.Conn, isUpdatingChan 
 	@returns: error
 */
 func (serv *Server) handleConnection(conn net.Conn, conns map[string]net.Conn) (err error) {
-
+	fmt.Println("ok ok")
 	dec := json.NewDecoder(conn)
-	var mess util.Message
+	mess := util.Message{"", "", ""}
     for {
-		err := dec.Decode(&mess)
 		fmt.Println(mess)
+		err := dec.Decode(&mess)
 		if err != nil {
-			conn.Close()
-			return errors.New("Error decoding JSON")
+			fmt.Println(err)
+			return err
 		}
+		mess := util.Message{}
 
 		serv.sendMessageToClient(mess, conns)
     }
@@ -141,7 +137,7 @@ func (serv *Server) sendMessageToClient(message util.Message, conns map[string]n
 
 	jsonData, err := json.Marshal(message)
 	if err != nil {
-		return errors.New("Error when marshalling json before client send")
+		return err
 	}
 	if jsonData == nil {
 		return errors.New("No JSON data before client send")

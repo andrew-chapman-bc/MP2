@@ -39,6 +39,7 @@ func parseServInput(inputChan chan string) (err error) {
 	inputArray := getInput()
 	if len(inputArray) != 0 {
 		if inputArray[0] == "EXIT" {
+			// hit here fine
 			inputChan <- "EXIT"
 		}
 	} else {
@@ -82,7 +83,6 @@ func main() {
 	connectionType := cmdLineArr[0]
 	var wg sync.WaitGroup
 	inputChan := make(chan string)
-	isUpdatingChan := make(chan bool)
 	messageChan := make(chan util.Message)
 	
 	// Server -> Read JSON/Read Input/handleConnections 
@@ -98,8 +98,9 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := serv.RunServ(inputChan, isUpdatingChan, &wg)
+			err := serv.RunServ(inputChan, &wg)
 			if err != nil {
+				fmt.Println("ok")
 				fmt.Println(err)
 				return
 			}
@@ -126,7 +127,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := cli.RunCli(messageChan)
+			err := cli.RunCli(messageChan, &wg)
 			if err != nil {
 				fmt.Println(err)
 				return

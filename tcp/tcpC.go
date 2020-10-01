@@ -9,10 +9,13 @@ import (
 	"encoding/json"
 	"../util"
 	"strings"
+	"sync"
 )
 
-
-
+// This seems dumb, due to client struct, but... JSON in Go!
+type User struct {
+	username string
+}
 
 
 // Client holds the structure of our TCP Client implementation
@@ -33,10 +36,17 @@ func NewTCPClient(username string) (*Client, error) {
 	client := Client{Username: username}
 	// if username is empty -> throw error
 	if username == "" {
+		fmt.Println("error here 1")
 		return nil, errors.New("Error: Address not found")
 	}
 
 	return &client, nil
+}
+
+
+func (cli *Client) sendUserToServer() (err error){
+	fmt.Fprintf(cli.client, cli.Username + "\n")
+	return
 }
 
 /*
@@ -47,27 +57,37 @@ func NewTCPClient(username string) (*Client, error) {
 	@params: chan {Message}
 	@returns: error
 */
-func (cli *Client) RunCli(messageChan chan util.Message) (err error) {
+func (cli *Client) RunCli(messageChan chan util.Message, wg *sync.WaitGroup) (err error) {
+	
 	connection, err := cli.readJSONForClient(cli.Username)
 	if err != nil {
-		return errors.New("Error when reading JSON on Client Side")
+		return err
 	}
-
+	fmt.Println(connection.Port)
 	cli.client, err = net.Dial("tcp", connection.Port)
 	if err != nil {
-		fmt.Println(connection.Port)
-		fmt.Println(err)
-		return errors.New("Could not dial... Incorrect address?")
+		return err
 	}
+	cli.sendUserToServer()
+	wg.Add(1)
 
-	go cli.listenForMessage(cli.client, messageChan)
+	go cli.listenForMessage(cli.client,messageChan)
 
+	wg.Add(1)
 	for {
-		if messageData := <- messageChan; messageData.Message == "EXIT" {
+		messageData := <- messageChan
+		if messageData.Message == "EXIT" {
+			wg.Done()
 			break
+		} else if messageData.Receiver == "Client Not Connected" {
+			fmt.Println("Client not connected")
 		}
-		cli.sendMessageToServer(cli.client, messageChan)
+		fmt.Println(messageData)
+		go cli.sendMessageToServer(cli.client, messageData)
 	}
+	wg.Done()
+	fmt.Println("outside the for loop here now")
+	wg.Wait()
 	return
 
 }
@@ -80,13 +100,12 @@ func (cli *Client) RunCli(messageChan chan util.Message) (err error) {
 	@params: net.Conn, chan {Message}
 	@returns: error
 */
-func (cli *Client) sendMessageToServer(conn net.Conn, messageChan chan util.Message) (err error) {
+func (cli *Client) sendMessageToServer(conn net.Conn, messageData util.Message) (err error) {
 	
-	messageData := <- messageChan
 
 	jsonData, err := json.Marshal(messageData)
 	if err != nil {
-		return errors.New("Error marshalling JSON Data")
+		return err
 	}
 
 	encoder := json.NewEncoder(conn)
@@ -110,6 +129,7 @@ func (cli *Client) listenForMessage(conn net.Conn, messageChan chan util.Message
 		decoder.Decode(&mess)
 
 		if mess.Message == "error" {
+			messageChan <- util.Message{"Client Not Connected", "", ""}
 			return errors.New("Person not connected yet")
 		} else if mess.Message == "EXIT" {
 			conn.Close()
